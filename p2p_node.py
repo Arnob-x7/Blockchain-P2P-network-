@@ -1,9 +1,3 @@
-"""
-p2p_node.py - Peer networking layer.
-
-Every peer = TCP server (accepts connections) + TCP client (makes connections).
-Each connected peer is served by its own thread.
-"""
 
 import ipaddress
 import os
@@ -14,12 +8,12 @@ import uuid
 import protocol
 from protocol import ProtocolError
 
-CONNECT_TIMEOUT = 5      # seconds to wait when connecting / during handshake
-HANDSHAKE_TIMEOUT = 10   # seconds an incoming peer has to send HELLO
+CONNECT_TIMEOUT = 5
+HANDSHAKE_TIMEOUT = 10 
 
 
 def get_local_ip() -> str:
-    """Best-effort LAN IP of this computer (no data is actually sent)."""
+
     try:
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
             s.connect(("10.255.255.255", 1))
@@ -29,7 +23,7 @@ def get_local_ip() -> str:
 
 
 class Peer:
-    """One live connection to a remote peer."""
+
 
     def __init__(self, sock, ip, peer_id, name, listen_port):
         self.sock = sock
@@ -37,7 +31,6 @@ class Peer:
         self.peer_id = peer_id
         self.name = name
         self.listen_port = listen_port
-        # Stops text and file bytes from two threads mixing on one socket.
         self.send_lock = threading.Lock()
 
     @property
@@ -62,10 +55,9 @@ class P2PNode:
 
         self.server_socket = None
         self.running = False
-        self.peers = {}                 # peer_id -> Peer
-        self._lock = threading.Lock()   # protects self.peers
+        self.peers = {}              
+        self._lock = threading.Lock() 
 
-    # ------------------------------------------------------------ helpers
     def _log(self, text):
         self.on_event(text)
 
@@ -77,9 +69,7 @@ class P2PNode:
         with self._lock:
             return self.peers.get(peer_id)
 
-    # -------------------------------------------------------------- start
     def start(self):
-        """Create the listening socket. Raises ValueError / OSError."""
         if not self.name:
             raise ValueError("Peer name cannot be empty")
         if not isinstance(self.port, int) or not 1 <= self.port <= 65535:
@@ -89,8 +79,8 @@ class P2PNode:
         server = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         try:
-            server.bind((self.host, self.port))   # bind
-            server.listen()                       # listen
+            server.bind((self.host, self.port)) 
+            server.listen()                       
         except OSError:
             server.close()
             raise
@@ -113,18 +103,16 @@ class P2PNode:
         self._log("[SYSTEM] Peer stopped")
         self.on_peers_changed()
 
-    # ------------------------------------------------------ server role
     def _accept_loop(self):
         while self.running:
             try:
-                conn, addr = self.server_socket.accept()   # accept
+                conn, addr = self.server_socket.accept()
             except OSError:
-                break    # server socket was closed by stop()
+                break 
             threading.Thread(target=self._handle_incoming,
                              args=(conn, addr), daemon=True).start()
 
     def _handle_incoming(self, conn, addr):
-        """Handshake with a peer that connected to us, then serve it."""
         try:
             conn.settimeout(HANDSHAKE_TIMEOUT)
             hello = protocol.recv_message(conn)
@@ -142,10 +130,7 @@ class P2PNode:
             return
         self._log(f"[SYSTEM] Connected to {peer.name}")
         self._listen_to_peer(peer)
-
-    # ------------------------------------------------------ client role
     def connect(self, ip, port):
-        """Connect to another peer. Blocking; returns True on success."""
         if not self.running:
             self._log("[ERROR] Start your peer before connecting")
             return False
@@ -197,11 +182,8 @@ class P2PNode:
         if sock:
             sock.close()
         return False
-
-    # ------------------------------------------------ peer bookkeeping
     @staticmethod
     def _parse_identity(msg, expected_type):
-        """Validate HELLO / HELLO_ACK -> (peer_id, name, listen_port)."""
         if msg.get("type") != expected_type:
             raise ProtocolError(f"expected '{expected_type}', "
                                 f"got '{msg.get('type')}'")
@@ -226,8 +208,6 @@ class P2PNode:
             if removed:
                 del self.peers[peer.peer_id]
         try:
-            # shutdown() wakes up our own blocked recv() and sends a FIN so the
-            # remote peer notices the disconnect; close() alone does not.
             peer.sock.shutdown(socket.SHUT_RDWR)
         except OSError:
             pass
@@ -241,9 +221,7 @@ class P2PNode:
                 self._log(f"[SYSTEM] {peer.name} disconnected{extra}")
             self.on_peers_changed()
 
-    # --------------------------------------------------- receiving data
     def _listen_to_peer(self, peer):
-        """Runs in its own thread: read messages from one peer forever."""
         reason = None
         try:
             while self.running:
@@ -289,12 +267,11 @@ class P2PNode:
         path = os.path.join(self.download_dir, filename)
         base, ext = os.path.splitext(filename)
         n = 1
-        while os.path.exists(path):   # never overwrite an existing file
+        while os.path.exists(path): 
             path = os.path.join(self.download_dir, f"{base}_{n}{ext}")
             n += 1
         return path
 
-    # ----------------------------------------------------- sending data
     def send_text(self, peer_id, text):
         peer = self._find_peer(peer_id)
         if peer is None:
@@ -323,10 +300,8 @@ class P2PNode:
             size = os.path.getsize(path)
             name = os.path.basename(path)
             with peer.send_lock:
-                # Stage 1: metadata
                 protocol.send_message(peer.sock, protocol.make_file(
                     self.peer_id, self.name, name, size))
-                # Stage 2: raw bytes, in chunks (never the whole file in memory)
                 sent = 0
                 with open(path, "rb") as f:
                     while True:

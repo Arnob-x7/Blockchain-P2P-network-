@@ -1,7 +1,7 @@
 # P2P Network – Communication and File Sharing
 
 **Course:** CSE 433 – Blockchain & Distributed Security Lab, University of Asia Pacific
-**Student:** _<Your Name>_  |  **ID:** _<Your ID>_  |  **Section:** _<Section>_
+**Student:** _<Arnab Paul>_  |  **ID:** _<22201204>_  |  **Section:** _<D2>_
 
 ## 1. Project description
 

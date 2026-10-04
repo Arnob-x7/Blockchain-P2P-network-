@@ -1,16 +1,3 @@
-"""
-protocol.py - Application-level protocol for the P2P network.
-
-TCP is a byte stream, so we need our own message boundaries (framing).
-Every control message is sent as:
-
-    [4-byte length (big-endian)][JSON payload (UTF-8)]
-
-File transfer is two stages on the same connection:
-
-    1. a framed JSON "file" message (metadata: filename, filesize)
-    2. exactly `filesize` raw bytes of the file (no framing)
-"""
 
 import json
 import struct
@@ -38,12 +25,7 @@ def encode_message(message: dict) -> bytes:
 
 
 def recv_exact(sock, size: int) -> bytes:
-    """
-    Read EXACTLY `size` bytes from the socket.
 
-    A single recv() may return fewer bytes than requested (TCP has no
-    message boundaries), so we loop until everything has arrived.
-    """
     buffer = bytearray()
     while len(buffer) < size:
         chunk = sock.recv(size - len(buffer))
@@ -58,7 +40,7 @@ def send_message(sock, message: dict) -> None:
 
 
 def recv_message(sock) -> dict:
-    """Read one framed JSON message."""
+    
     header = recv_exact(sock, HEADER_SIZE)
     (length,) = struct.unpack("!I", header)
     if length == 0 or length > MAX_MESSAGE_SIZE:
@@ -75,7 +57,7 @@ def recv_message(sock) -> dict:
 
 # ------------------------------------------------------- message builders
 def make_hello(msg_type: str, peer_id: str, peer_name: str, port: int) -> dict:
-    """Used for both HELLO and HELLO_ACK (they carry the same fields)."""
+    
     return {"type": msg_type, "peer_id": peer_id,
             "peer_name": peer_name, "port": port}
 

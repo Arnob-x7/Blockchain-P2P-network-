@@ -16,8 +16,8 @@ class App:
     def __init__(self, root):
         self.root = root
         self.node = None
-        self.peer_ids = []              # same order as the listbox rows
-        self.events = queue.Queue()     # network threads -> GUI thread
+        self.peer_ids = []          
+        self.events = queue.Queue()  
 
         root.title("UAP P2P Network")
         root.geometry("900x620")
@@ -64,7 +64,6 @@ class App:
         self.connect_btn = ttk.Button(con, text="Connect", command=self.connect_peer)
         self.connect_btn.grid(row=0, column=4, **pad)
 
-        # Bottom (packed first so the middle area can expand)
         file_f = ttk.LabelFrame(self.root, text="Send File")
         file_f.pack(side="bottom", fill="x", padx=8, pady=(4, 8))
         ttk.Label(file_f, text="Text, image, audio, video, PDF, ZIP, etc.").pack(
@@ -81,8 +80,6 @@ class App:
         self.msg_entry.bind("<Return>", lambda e: self.send_text())
         self.send_btn = ttk.Button(text_f, text="Send", command=self.send_text)
         self.send_btn.pack(side="right", **pad)
-
-        # Peers list + event log
         mid = ttk.Frame(self.root)
         mid.pack(fill="both", expand=True, padx=8, pady=4)
 
@@ -112,11 +109,10 @@ class App:
                   self.file_btn):
             w.configure(state=active)
 
-    # ------------------------------------------------------ node events
-    def _on_node_event(self, text):       # called from network threads
+    def _on_node_event(self, text):    
         self.events.put(("log", text))
 
-    def _on_peers_changed(self):          # called from network threads
+    def _on_peers_changed(self):         
         self.events.put(("peers", None))
 
     def _poll_events(self):
@@ -156,7 +152,6 @@ class App:
             return self.peer_ids[sel[0]]
         return None
 
-    # ---------------------------------------------------------- actions
     def start_peer(self):
         name = self.name_var.get().strip()
         if not name:
@@ -193,7 +188,6 @@ class App:
         if not self.node:
             return
         ip, port = self.ip_var.get(), self.rport_var.get()
-        # Connecting can block for a few seconds: keep it off the GUI thread.
         threading.Thread(target=self.node.connect, args=(ip, port),
                          daemon=True).start()
 
